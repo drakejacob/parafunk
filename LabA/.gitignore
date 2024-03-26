@@ -1,6 +1,6 @@
 *.cabal
-.dist-newstyle/
+dist-newstyle/
 .stack-work/
-.stack.yaml.lock
-.LabA-exe.EXE.eventlog
+stack.yaml.lock
+LabA-exe.EXE.eventlog
 *~
