@@ -1,4 +1,4 @@
-*.cabal
+LabA.cabal
 dist-newstyle/
 .stack-work/
 stack.yaml.lock
