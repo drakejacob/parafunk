@@ -24,11 +24,13 @@ resamples k xs =
     take (length xs - k) $
     zipWith (++) (inits xs) (map (drop k) (tails xs))
 
-jackknife0 :: ([a] -> b) -> [a] -> [b]
-jackknife0 f = map f . resamples 500
+-- sequential jackknife
+jackknife :: ([a] -> b) -> [a] -> [b]
+jackknife f = map f . resamples 500
 
-jackknife1 :: NFData b => ([a] -> b) -> [a] -> [b]
-jackknife1 f = pmap f . resamples 500
+-- parallel jackknife
+jackknifePar :: NFData b => (([a] -> b) -> [[a]] -> [b]) -> ([a] -> b) -> [a] -> [b]
+jackknifePar mapFunc f = mapFunc f . resamples 500
 
 -- define parallel map function
 pmap :: NFData b => (a -> b) -> [a] -> [b] 
@@ -37,13 +39,7 @@ pmap f (x:xs) = par current $ pseq rest (current:rest)
   where current = force $ f x
         rest = pmap f xs
 
-jackknife2 :: NFData b => ([a] -> b) -> [a] -> [b]
-jackknife2 f = rmap f . resamples 500
-
-jackknife2b :: ([a] -> b) -> [a] -> [b]
-jackknife2b f = parMap rseq f . resamples 500
-
--- define parallel map function using rpar and rseq
+-- map function using rpar and rseq
 rmap :: NFData b => (a -> b) -> [a] -> [b]
 rmap f [] = [] 
 rmap f (x:xs) = runEval $ do
@@ -53,21 +49,15 @@ rmap f (x:xs) = runEval $ do
       -- rseq y
       return (y:ys)
 
-jackknife3 :: NFData b =>  ([a] -> b) -> [a] -> [b]
-jackknife3 f = smap f. resamples 500
-
+-- map using Strategies
 smap :: NFData b => (a -> b) -> [a] -> [b]
-smap f xs = map f xs `using` parList rdeepseq 
+smap f xs = map f xs `using` parList rdeepseq
 
--- using Par monad
-jackknife4 :: NFData b => ([a] -> b) -> [a] -> [b]
-jackknife4 f = parMapPar f . resamples 500 
-
+-- Par monad map function
 parMapPar :: NFData b => (a -> b) -> [a] -> [b]
 parMapPar f xs = runPar $ do
-    ibs <- mapM (spawn . return . f) xs
-    mapM get ibs
-
+    results <- mapM (spawn . return . f) xs
+    mapM get results
 
 --------------------------------------------------------------------
 crud = zipWith (\x a -> sin (x / 300)**2 + a) [0..]
@@ -80,16 +70,16 @@ main = do
   let rs = crud xs ++ ys
   putStrLn $ "sample mean:    " ++ show (mean rs)
 
-  let j = jackknife0 mean rs :: [Float]
+  let j = jackknife mean rs :: [Float]
   putStrLn $ "jack mean min:  " ++ show (minimum j)
   putStrLn $ "jack mean max:  " ++ show (maximum j)
+
   defaultMain
         [
-        bench "sequential jackknife"          (nf (jackknife0 mean) rs)
-        , bench "standard par jackknife"      (nf (jackknife1 mean) rs)
-        , bench "jackknife using Eval monad"  (nf (jackknife2 mean) rs)
-        , bench "jackknife using parMap"      (nf (jackknife2b mean) rs)
-        , bench "jackknife using Strategies"  (nf (jackknife3 mean) rs)
-        , bench "jackknife using Par monad"   (nf (jackknife4 mean) rs)
+        bench "sequential jackknife"          (nf (jackknife mean) rs)
+        , bench "standard par jackknife"      (nf (jackknifePar pmap mean) rs)
+        , bench "jackknife using Eval monad"  (nf (jackknifePar rmap mean) rs)
+        , bench "jackknife using parMap"      (nf (jackknifePar (parMap rdeepseq) mean) rs)
+        , bench "jackknife using Strategies"  (nf (jackknifePar smap mean) rs)
+        , bench "jackknife using Par monad"   (nf (jackknifePar parMapPar mean) rs)
          ]
-
