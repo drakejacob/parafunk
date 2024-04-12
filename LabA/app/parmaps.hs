@@ -29,24 +29,23 @@ jackknife :: ([a] -> b) -> [a] -> [b]
 jackknife f = map f . resamples 500
 
 -- parallel jackknife
-jackknifePar :: NFData b => (([a] -> b) -> [[a]] -> [b]) -> ([a] -> b) -> [a] -> [b]
+jackknifePar :: NFData b => (([a] -> b) -> [[a]] -> [b])
+                         -> ([a] -> b) -> [a] -> [b]
 jackknifePar mapFunc f = mapFunc f . resamples 500
 
 -- define parallel map function
 pmap :: NFData b => (a -> b) -> [a] -> [b] 
-pmap f [] = []
+pmap _ [] = []
 pmap f (x:xs) = par current $ pseq rest (current:rest)
   where current = force $ f x
         rest = pmap f xs
 
 -- map function using rpar and rseq
 rmap :: NFData b => (a -> b) -> [a] -> [b]
-rmap f [] = [] 
+rmap _ [] = [] 
 rmap f (x:xs) = runEval $ do
       y  <- rpar (force $ f x)
       ys <- rseq (rmap f xs)
-      -- let ys = rmap f xs
-      -- rseq y
       return (y:ys)
 
 -- map using Strategies
@@ -62,6 +61,7 @@ parMapPar f xs = runPar $ do
 --------------------------------------------------------------------
 crud = zipWith (\x a -> sin (x / 300)**2 + a) [0..]
 
+main :: IO ()
 main = do
   let (xs,ys) = splitAt 1500  (take 6000
                                (randoms (mkStdGen 211570155)) :: [Float] )
@@ -75,11 +75,17 @@ main = do
   putStrLn $ "jack mean max:  " ++ show (maximum j)
 
   defaultMain
-        [
-        bench "sequential jackknife"          (nf (jackknife mean) rs)
-        , bench "standard par jackknife"      (nf (jackknifePar pmap mean) rs)
-        , bench "jackknife using Eval monad"  (nf (jackknifePar rmap mean) rs)
-        , bench "jackknife using parMap"      (nf (jackknifePar (parMap rdeepseq) mean) rs)
-        , bench "jackknife using Strategies"  (nf (jackknifePar smap mean) rs)
-        , bench "jackknife using Par monad"   (nf (jackknifePar parMapPar mean) rs)
-         ]
+      [
+      bench "sequential jackknife"          
+            (nf (jackknife mean) rs)
+      , bench "jackknife using standard par"
+            (nf (jackknifePar pmap mean) rs)
+      , bench "jackknife using Eval monad"  
+            (nf (jackknifePar rmap mean) rs)
+      , bench "jackknife using parMap"      
+            (nf (jackknifePar (parMap rdeepseq) mean) rs)
+      , bench "jackknife using Strategies"  
+            (nf (jackknifePar smap mean) rs)
+      , bench "jackknife using Par monad"   
+            (nf (jackknifePar parMapPar mean) rs)
+        ]

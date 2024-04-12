@@ -43,7 +43,7 @@ library
   default-language: Haskell2010
 
 executable LabA-exe
-  main-is: divconq.hs
+  main-is: parmaps.hs
   other-modules:
       Paths_LabA
   autogen-modules:

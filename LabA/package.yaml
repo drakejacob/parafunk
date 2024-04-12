@@ -43,7 +43,7 @@ library:
 
 executables:
   LabA-exe:
-    main:                divconq.hs
+    main:                parmaps.hs
     source-dirs:         app
     ghc-options:
     - -threaded
