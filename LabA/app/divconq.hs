@@ -55,15 +55,22 @@ sumTree = divConq granularity split solve merge
         solve (Leaf n)              = n
         merge (a, b)                = a + b
 
+-- Sequnetial sumTree for comparison
+seqSumTree :: Tree -> Int
+seqSumTree (Leaf n) = n
+seqSumTree (Tree ltree rtree) = seqSumTree ltree + seqSumTree rtree
+
 main:: IO()
 main = do
     defaultMain
       [
-        bench "sequential quicksort on reverse list" $ 
+          bench "sequential quicksort on reverse list" $ 
             nf seqquicksort (reverse [0..9000])
-       , bench "quicksort on reverse list" $ 
+        , bench "paralell quicksort on reverse list" $ 
             nf quicksort (reverse [0..9000])
-       , bench "sumTree on large tree" $ 
+        , bench "sequential sumtree on large tree" $
+            nf seqSumTree largeTree
+        , bench "parallel sumTree on large tree" $ 
             nf sumTree largeTree
       ]
 
