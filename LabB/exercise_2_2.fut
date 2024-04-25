@@ -34,12 +34,13 @@ def hist 'a [n]
      
     let max_element = reduce i64.max i64.lowest is
     let min_element = reduce i64.min i64.highest is
+    let range = max_element - min_element
     let bin_size = (max_element - min_element) / bin_count
     let keying (i:i64) : i64 = 
         if i == max_element then bin_count - 1 else (i - min_element) / bin_size
 
     let key_list = map keying is 
-    let pairs = zip key_list as
+    let pairs = zip (key_list ++ (iota (range + 1))) (as ++ (replicate 0 (range + 1)))
 
     let sorted = radix_sort_by_key (\(k, _) -> k) 64 i64.get_bit pairs
     let sorted_keys = map (\(k, _) -> k) sorted
